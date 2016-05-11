@@ -82,10 +82,6 @@ def _convert_to_openssh(key):
     return new_key + b'\n'
 
 
-def _convert_to_putty(key):
-    pass
-
-
 def _open_files(in_name, out_name):
     """
     Open file appropriate file streams in binary mode.
