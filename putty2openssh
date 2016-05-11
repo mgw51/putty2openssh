@@ -6,6 +6,7 @@ Convert public rsa-ssh key from PuTTY format to openSSH format.
 import argparse
 import os
 import re
+import signal
 import sys
 
 
@@ -70,9 +71,9 @@ def _convert_to_openssh(key):
     """
     # Remove PuTTY-specific formatting.
     #
-    comment = re.search(rb'Comment: "(.*)"', key)                    # Grab the comment
-    new_key = re.sub(rb'-+ *(BEGIN|END).*-+|Comment:.*', b'', key)   # Remove first, last, and comment lines
-    new_key = re.sub(rb'\r|\n| ', b'', new_key)                      # Strip out newlines and carriage returns
+    comment = re.search(b'Comment: "(.*)"', key)                    # Grab the comment
+    new_key = re.sub(b'-+ *(BEGIN|END).*-+|Comment:.*', b'', key)   # Remove first, last, and comment lines
+    new_key = re.sub(b'\r|\n| ', b'', new_key)                      # Strip out newlines and carriage returns
 
     # Add OpenSSH key type and comment
     #
@@ -100,7 +101,7 @@ def _open_files(in_name, out_name):
         outfile = sys.stdout.buffer
     else:
         if os.path.isfile(out_name):
-            _prompt_user()
+            _prompt_user()  # This needs to be finished.
         try:
             outfile = open(out_name, 'wb')
         except OSError as err:
@@ -108,6 +109,19 @@ def _open_files(in_name, out_name):
     return (infile, outfile)
 
 
+def clean_exit(*_):
+    """
+    This provides a clean way to exit the program on receipt of a SIGINT
+
+    Didn't supply a source file and forgot to pipe a key into the program?
+    Catching the SIGINT signal allows us to cleanly exit without printing
+    a stack trace to stdout.
+    """
+    print()
+    sys.exit(0)
+
+
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, clean_exit)
     convert(_get_args())
 
