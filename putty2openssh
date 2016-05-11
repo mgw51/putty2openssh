@@ -1,0 +1,117 @@
+#!/usr/bin/python3
+
+"""
+Convert public rsa-ssh key from PuTTY format to openSSH format.
+"""
+import argparse
+import os
+import re
+import sys
+
+
+def convert(args):
+    """
+    Convert a PuTTY formatted key to OpenSSH format.
+
+    If the input key is not a putty key, assume it is already in openSSH format
+    and return it unchanged.
+    """
+    input, output = _open_files(args.pubkey, args.out_file)
+
+    if input:
+        key = input.read()
+        converted_key = _convert_to_openssh(key) if _is_putty_key(key) else key
+        if output:
+            output.write(converted_key)
+        else:
+            print(converted_key)
+    if input:
+        input.close()
+    if output:
+        output.close()
+
+
+def _get_args():
+    """
+    Get user arguments or set reasonable defaults.
+    """
+    desc = 'Convert a PuTTY public key to OpenSSH format.'
+    parser = argparse.ArgumentParser(prog='putty2openssh', description=desc)
+
+    parser.add_argument("pubkey",
+                        type=str,
+                        nargs='?',
+                        default='-',
+                        help=("File or stream that contains PuTTY key to be converted."
+                              "If no pubkey file is provided, read the key directly from stdin."))
+
+    parser.add_argument('-o', help='Output file; defaults to stdout.',
+                        type=str,
+                        default=None,
+                        nargs='?',
+                        dest='out_file')
+    
+    return parser.parse_args()
+
+
+def _is_putty_key(key):
+    """
+    Determine if the given key is in PuTTY format.
+    """
+    return bool(re.match(br'-+ *BEGIN', key))
+
+
+def _convert_to_openssh(key):
+    """
+    Perform conversion to openSSH format.
+
+    Remove putty-specific formatting and text.  Also move the key comment
+    to the end of the key text.
+    """
+    # Remove PuTTY-specific formatting.
+    #
+    comment = re.search(rb'Comment: "(.*)"', key)                    # Grab the comment
+    new_key = re.sub(rb'-+ *(BEGIN|END).*-+|Comment:.*', b'', key)   # Remove first, last, and comment lines
+    new_key = re.sub(rb'\r|\n| ', b'', new_key)                      # Strip out newlines and carriage returns
+
+    # Add OpenSSH key type and comment
+    #
+    new_key = b'ssh-rsa ' + new_key
+    if comment:
+        new_key += b' ' + comment.group(1)
+    return new_key + b'\n'
+
+
+def _convert_to_putty(key):
+    pass
+
+
+def _open_files(in_name, out_name):
+    """
+    Open file appropriate file streams in binary mode.
+    """
+    infile = None
+    outfile = None
+    if in_name == '-':
+        infile = sys.stdin.buffer
+    else:
+        try:
+            infile = open(in_name, 'rb')
+        except OSError as err:
+            print("Unable to open input key file: " + str(err))
+
+    if out_name == None:
+        outfile = sys.stdout.buffer
+    else:
+        if os.path.isfile(out_name):
+            _prompt_user()
+        try:
+            outfile = open(out_name, 'wb')
+        except OSError as err:
+            print("Unable to open output file: " + str(err))
+    return (infile, outfile)
+
+
+if __name__ == '__main__':
+    convert(_get_args())
+
