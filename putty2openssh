@@ -98,18 +98,31 @@ def _open_files(in_name, out_name):
             print("Unable to open input key file: " + str(err))
 
     if out_name == None:
-        outfile = sys.stdout.buffer
+        outfile = sys.stdout.buffer          # use stdout for output
     else:
-        if os.path.isfile(out_name):
-            _prompt_user()  # This needs to be finished.
+        _file_check()  # This needs to be finished.
         try:
-            outfile = open(out_name, 'wb')
+            outfile = open(out_name, 'wb')   # use file for output
         except OSError as err:
             print("Unable to open output file: " + str(err))
     return (infile, outfile)
 
 
-def clean_exit(*_):
+def _file_check():
+    """
+    Check for the existance of an output file of the same name.
+
+    We don't necessarily want to over write an existing pubkey file,
+    so the normal 'pythonic practice' of Do And Ask Forgiveness Later
+    does not apply so well here.
+
+    Instead, first be sure that we are writing to a new file.  If not,
+    prompt the user to either continue or quit.
+    """
+    pass
+
+
+def clean_exit(*_):  # underscore indicates arguments we want to ignore, so here we are ignoring an arg list
     """
     This provides a clean way to exit the program on receipt of a SIGINT
 
